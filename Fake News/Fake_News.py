@@ -52,8 +52,8 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 tfidf = TfidfVectorizer(max_features=5000)
 X = tfidf.fit_transform(df['clean_text']).toarray()
 y = df['label']
-#build model
 
+#build model
 # Split the data
 from sklearn.model_selection import train_test_split
 
