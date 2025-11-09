@@ -53,7 +53,7 @@ tfidf = TfidfVectorizer(max_features=5000)
 X = tfidf.fit_transform(df['clean_text']).toarray()
 y = df['label']
 
-#build model
+#Build model
 # Split the data
 from sklearn.model_selection import train_test_split
 
@@ -61,48 +61,40 @@ X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=42, stratify=y
 )
 
-# Train a baseline model (LogisticRegression)
+# Train a Logistic Regression model
 from sklearn.linear_model import LogisticRegression
 
 model = LogisticRegression(max_iter=300)
 model.fit(X_train, y_train)
 
-# Evaluate model performance
-from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
 
+
+
+# Evaluate model performance
+from sklearn.metrics import accuracy_score, confusion_matrix, classification_report, roc_curve, roc_auc_score, mean_absolute_error
+from sklearn.preprocessing import LabelEncoder
 y_pred = model.predict(X_test)
+y_prob = model.predict_proba(X_test)[:, 1]  # probabilities for ROC curve
+
+le = LabelEncoder()
+y_test_enc = le.fit_transform(y_test)
+y_pred_enc = le.transform(y_pred)
+# Define 5-Fold cross-validation
+from sklearn.model_selection import KFold, cross_val_score
+kf = KFold(n_splits=5, shuffle=True, random_state=42)
+cv_scores = cross_val_score(model, X, y, cv=kf, scoring='accuracy')
+
 
 print("Accuracy:", accuracy_score(y_test, y_pred))
+print("Mean Absolute Error (MAE):", mean_absolute_error(y_test_enc, y_pred_enc))
 print("\nClassification Report:\n", classification_report(y_test, y_pred))
 print("\nConfusion Matrix:\n", confusion_matrix(y_test, y_pred))
-
-
-'''
-#Fine-tune with hyperparameters
-from sklearn.model_selection import GridSearchCV
-
-param_grid = {
-    'C': [0.1, 1, 2],
-    'max_iter': [200, 300, 500]
-}
-
-grid = GridSearchCV(LogisticRegression(), param_grid, cv=5, scoring='accuracy')
-grid.fit(X_train, y_train)
-
-print("Best params:", grid.best_params_)
-print("Best score:", grid.best_score_)
-
-
-# Try different algorithms(Naive Bayes)
-from sklearn.naive_bayes import MultinomialNB
-nb = MultinomialNB()
-nb.fit(X_train, y_train)
-print("Naive Bayes accuracy:", nb.score(X_test, y_test))
-
+print("Cross-validation accuracies for each fold:", cv_scores)
+print("Mean CV Accuracy:", cv_scores.mean())
 
 
 # Visualize and interpret results
-
+# Confusion Matrix
 import matplotlib.pyplot as plt
 import seaborn as sns
 
@@ -110,7 +102,23 @@ cm = confusion_matrix(y_test, y_pred)
 sns.heatmap(cm, annot=True, fmt='d', cmap='Blues')
 plt.xlabel('Predicted')
 plt.ylabel('Actual')
-plt.show()'''
+plt.show()
+
+# ROC Curve
+import matplotlib.pyplot as plt
+fpr, tpr, _ = roc_curve(y_test, y_prob, pos_label='REAL')
+roc_auc = roc_auc_score(y_test, y_prob)
+
+plt.figure(figsize=(6, 5))
+plt.plot(fpr, tpr, label=f"ROC Curve (AUC = {roc_auc:.3f})", color='blue')
+plt.plot([0, 1], [0, 1], 'r--')  # diagonal line
+plt.xlabel("False Positive Rate")
+plt.ylabel("True Positive Rate")
+plt.title("Receiver Operating Characteristic (ROC) Curve")
+plt.legend()
+plt.grid(True)
+plt.show()
+
 
 # Save model and vectorizer
 import joblib
